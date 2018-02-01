@@ -4,12 +4,15 @@
 //ROOT
 #include "TTree.h"
 #include "TChain.h"
+#include "TH1F.h"
+#include "TH2F.h"
 
 //SusyNtuple
 #include "SusyNtuple/SusyNtAna.h"
 #include "SusyNtuple/SusyNtTools.h"
 
 //std/stl
+#include <string>
 #include <fstream>
 
 /////////////////////////////////////////////////////////////
@@ -34,9 +37,23 @@ class ORStudy : public SusyNtAna
         void set_chain(TChain* chain) { m_input_chain = chain; }
         TChain* chain() { return m_input_chain; }
 
+        void set_tagger(std::string tagger_name) { m_tagger = tagger_name; }
+
         ////////////////////////////////////////////
         // analysis methods
         ////////////////////////////////////////////
+
+        // histograms
+        void initialize_histograms();
+        void write_histograms();
+
+        // fill truth containers
+        void selectTruthObjects();
+        void clearTruthObjects();
+        void performOverlap();
+        void j_e_overlap(ElectronVector& electrons, JetVector& jets);
+        void e_j_overlap(ElectronVector& electrons, JetVector& jets);
+        void look_at_jet(const Jet* jet);
 
         // standard ATLAS event cleaning
         bool passEventCleaning(const MuonVector& preMuons, const MuonVector& baseMuons,
@@ -53,7 +70,48 @@ class ORStudy : public SusyNtAna
     private :
         int m_dbg;
         TChain* m_input_chain; // the TChain object we are processing
+        std::string m_tagger;
         float m_mc_weight;
+
+        // Truth objects
+        TruthParticleVector m_truth_particles;
+        TruthJetVector m_truth_jets;
+        TruthMet m_truth_met;
+
+        TruthParticleVector m_truth_electrons;
+        TruthParticleVector m_truth_muons;
+        TruthParticleVector m_truth_leptons;
+
+        ElectronVector m_original_base_electrons;
+        JetVector m_original_base_jets;
+
+        // Histograms and the like
+        TH1F* h_l0pt;
+        TH1F* h_l1pt;
+        TH1F* h_m0pt;
+        TH1F* h_m1pt;
+        TH1F* h_dphill;
+        TH1F* h_drll;
+
+        // ele and jet
+        TH1F* h_min_drll_ele_jet;
+        TH1F* h_pt_ratio_ele_jet;
+        TH2F* h2_pt_ratio_min_drll_ele_jet;
+        TH2F* h2_pt_ratio_ntracks;
+        TH2F* h2_mv2_min_drll_ele_jet;
+        TH2F* h2_dl1_min_drll_ele_jet;
+        TH1F* h_closest_truth_obj_jet;
+        TH1F* h_type_closest_ele;
+        TH2F* h2_type_closest_ele_min_drjet;
+        TH1F* h_origin_closest_ele;
+        TH2F* h2_origin_closest_ele_min_drjet;
+        TH1F* h_flavor_closest_jet;
+        TH2F* h2_flavor_closest_jet_min_drjet;
+        TH2F* h2_flavor_closest_jet_ntracks;
+
+        TH1F* h_nbjets_survive;
+        TH1F* h_nbjets_survive_matched;
+
 
 }; //class
 
