@@ -38,6 +38,7 @@ class ORStudy : public SusyNtAna
         TChain* chain() { return m_input_chain; }
 
         void set_tagger(std::string tagger_name) { m_tagger = tagger_name; }
+        void set_release(std::string release) { m_release = release; }
 
         ////////////////////////////////////////////
         // analysis methods
@@ -71,6 +72,7 @@ class ORStudy : public SusyNtAna
         int m_dbg;
         TChain* m_input_chain; // the TChain object we are processing
         std::string m_tagger;
+        std::string m_release;
         float m_mc_weight;
 
         // Truth objects
@@ -108,6 +110,14 @@ class ORStudy : public SusyNtAna
         TH1F* h_flavor_closest_jet;
         TH2F* h2_flavor_closest_jet_min_drjet;
         TH2F* h2_flavor_closest_jet_ntracks;
+
+        TH2F* h2_mv2_ntracks;
+        TH2F* h2_dl1_ntracks;
+
+        int n_kin;
+        int n_kin_b;
+
+        
 
         TH1F* h_nbjets_survive;
         TH1F* h_nbjets_survive_matched;

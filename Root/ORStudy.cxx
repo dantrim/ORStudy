@@ -21,12 +21,15 @@ ORStudy::ORStudy() :
     m_dbg(0),
     m_input_chain(nullptr),
     m_tagger("mv2"),
+    m_release(""),
     m_mc_weight(1.0)
 {
 }
 //////////////////////////////////////////////////////////////////////////////
 void ORStudy::Begin(TTree* /*tree*/)
 {
+    n_kin = 0;
+    n_kin_b = 0;
     // call base class' Begin method
     SusyNtAna::Begin(0);
     if(dbg()) cout << "ORStudy::Begin" << endl;
@@ -71,6 +74,9 @@ void ORStudy::initialize_histograms()
 
     h_nbjets_survive = new TH1F("h_nbjets_survive", ";n-bjets;Entries",6,0,6);
     h_nbjets_survive_matched = new TH1F("h_nbjets_survive_matched", ";n-bjets;Entries", 6, 0, 6);
+
+    h2_mv2_ntracks = new TH2F("h2_mv2_ntracks", ";mv2c10 score;n-tracks", 40, 0, 1, 30, 0, 30);
+    h2_dl1_ntracks = new TH2F("h2_dl1_ntracks", ";DL1 score;n-tracks", 60, -4, 2, 30, 0, 30);
 }
 //////////////////////////////////////////////////////////////////////////////
 Bool_t ORStudy::Process(Long64_t entry)
@@ -121,7 +127,13 @@ Bool_t ORStudy::Process(Long64_t entry)
     for(auto & x : m_baseJets) {
         bool pass_pt = x->Pt() > 20.0;
         bool pass_eta = (fabs(x->Eta()) < 2.5);
-        bool pass_mv2 = (x->mv2c10 > JetSelector::mv2c10_77efficiency());
+        bool pass_mv2 = true;
+        if(m_release == "20") {
+            pass_mv2 = (x->mv2c10 > JetSelector::mv2c10_77efficiency_rel20());
+        }
+        else if(m_release == "21") {
+            pass_mv2 = (x->mv2c10 > JetSelector::mv2c10_77efficiency());
+        }
         bool pass_dl1 = (x->dl1 > JetSelector::dl1_77efficiency());
         bool pass_tagger = true;
         if(m_tagger=="mv2") {
@@ -228,7 +240,17 @@ void ORStudy::j_e_overlap(ElectronVector& electrons, JetVector& jets)
         if(doBJetOR) {
             bool pass_pt = j->Pt() > 20.0;
             bool pass_eta = (fabs(j->Eta()) < 2.5);
-            bool pass_mv2 = (j->mv2c10 > JetSelector::mv2c10_85efficiency());
+            bool pass_mv2 = true;//(j->mv2c10 > JetSelector::mv2c10_77efficiency());
+            if(m_release == "20") {
+                pass_mv2 = (j->mv2c10 > JetSelector::mv2c10_85efficiency_rel20());
+            }
+            else if(m_release == "21") {
+                pass_mv2 = (j->mv2c10 > JetSelector::mv2c10_85efficiency());
+            }
+            else {
+                cout << "ORStudy::j_e_overlap    ERROR Invalid release encountered" << endl;
+                exit(1);
+            }
             bool pass_dl1 = (j->dl1 > JetSelector::dl1_85efficiency());
             bool pass_tagger = true;
             if(m_tagger=="mv2") {
@@ -243,7 +265,16 @@ void ORStudy::j_e_overlap(ElectronVector& electrons, JetVector& jets)
             }
             bool pass_jvt = JetSelector::passJvt(j);
 
+            if(pass_pt && pass_eta && pass_jvt) {
+                h2_mv2_ntracks->Fill(j->mv2c10, j->nTracks);
+                h2_dl1_ntracks->Fill(j->dl1, j->nTracks);
+
+                n_kin++;
+            }
+
+            //look_at_jet(j);
             if(pass_pt && pass_eta && pass_tagger && pass_jvt) {
+                n_kin_b++;
                 //int min_ele_idx = -1;
                 //float min_dr = 9999.;
                 //for(size_t iel = 0; iel < electrons.size(); iel++) {
@@ -323,38 +354,38 @@ void ORStudy::look_at_jet(const Jet* jet)
     h2_pt_ratio_ntracks->Fill(ratio, jet->nTracks);
 
 
-    int min_truth_ele_idx = -1;
-    float min_te_dr = 9999.;
-    for(size_t ite = 0; ite < m_truth_electrons.size(); ite++) {
-        const TruthParticle* te = m_truth_electrons.at(ite);
-        float dr = jet->DeltaR(*te);
-        if(dr < min_te_dr) { min_te_dr = dr; min_truth_ele_idx = ite; }
-    } // te
+   // int min_truth_ele_idx = -1;
+   // float min_te_dr = 9999.;
+   // for(size_t ite = 0; ite < m_truth_electrons.size(); ite++) {
+   //     const TruthParticle* te = m_truth_electrons.at(ite);
+   //     float dr = jet->DeltaR(*te);
+   //     if(dr < min_te_dr) { min_te_dr = dr; min_truth_ele_idx = ite; }
+   // } // te
 
-    int type_closest_ele = m_truth_electrons.at(min_truth_ele_idx)->type;
-    int origin_closest_ele = m_truth_electrons.at(min_truth_ele_idx)->origin;
-    h_type_closest_ele->Fill(type_closest_ele);
-    h_origin_closest_ele->Fill(origin_closest_ele);
-    h2_type_closest_ele_min_drjet->Fill(min_te_dr, type_closest_ele);
-    h2_origin_closest_ele_min_drjet->Fill(min_te_dr, origin_closest_ele);
+   // int type_closest_ele = m_truth_electrons.at(min_truth_ele_idx)->type;
+   // int origin_closest_ele = m_truth_electrons.at(min_truth_ele_idx)->origin;
+   // h_type_closest_ele->Fill(type_closest_ele);
+   // h_origin_closest_ele->Fill(origin_closest_ele);
+   // h2_type_closest_ele_min_drjet->Fill(min_te_dr, type_closest_ele);
+   // h2_origin_closest_ele_min_drjet->Fill(min_te_dr, origin_closest_ele);
 
-    int min_truth_jet_idx = -1;
-    float min_tj_dr = 9999.;
-    for(size_t itj = 0; itj < m_truth_jets.size(); itj++) {
-        const TruthJet* tj = m_truth_jets.at(itj);
-        float dr = jet->DeltaR(*tj);
-        if(dr < min_tj_dr) { min_tj_dr = dr; min_truth_jet_idx = itj; }
-    } // itj
+   // int min_truth_jet_idx = -1;
+   // float min_tj_dr = 9999.;
+   // for(size_t itj = 0; itj < m_truth_jets.size(); itj++) {
+   //     const TruthJet* tj = m_truth_jets.at(itj);
+   //     float dr = jet->DeltaR(*tj);
+   //     if(dr < min_tj_dr) { min_tj_dr = dr; min_truth_jet_idx = itj; }
+   // } // itj
 
-    int flavor = m_truth_jets.at(min_truth_jet_idx)->flavor;
-    h_flavor_closest_jet->Fill(flavor);
-    h2_flavor_closest_jet_min_drjet->Fill(min_tj_dr, flavor);
-    h2_flavor_closest_jet_ntracks->Fill(flavor, jet->nTracks);
+   // int flavor = m_truth_jets.at(min_truth_jet_idx)->flavor;
+   // h_flavor_closest_jet->Fill(flavor);
+   // h2_flavor_closest_jet_min_drjet->Fill(min_tj_dr, flavor);
+   // h2_flavor_closest_jet_ntracks->Fill(flavor, jet->nTracks);
 
-    bool closest_object_is_jet = true;
-    if(min_te_dr < min_tj_dr) closest_object_is_jet = false;
-    if(closest_object_is_jet) h_closest_truth_obj_jet->Fill(0.5, m_mc_weight);
-    else { h_closest_truth_obj_jet->Fill(1.5, m_mc_weight); }
+   // bool closest_object_is_jet = true;
+   // if(min_te_dr < min_tj_dr) closest_object_is_jet = false;
+   // if(closest_object_is_jet) h_closest_truth_obj_jet->Fill(0.5, m_mc_weight);
+   // else { h_closest_truth_obj_jet->Fill(1.5, m_mc_weight); }
     
 }
 //////////////////////////////////////////////////////////////////////////////
@@ -411,12 +442,17 @@ void ORStudy::Terminate()
 
     write_histograms();
 
+    cout << "----------------------" << endl;
+    cout << " n_kin_b / n_kin = " << n_kin_b << " / " << n_kin << endl;
+
     return;
 }
 //////////////////////////////////////////////////////////////////////////////
 void ORStudy::write_histograms()
 {
-    TFile* out_file = new TFile("test.root", "RECREATE"); 
+    stringstream outname;
+    outname << "or_study_rel" << m_release << "_" << m_tagger << ".root";
+    TFile* out_file = new TFile(outname.str().c_str(), "RECREATE"); 
     if(out_file->IsZombie()) {
         cout << "ERROR Failed to open output file" << endl;
         return;
@@ -446,6 +482,9 @@ void ORStudy::write_histograms()
 
     h_nbjets_survive->Write();
     h_nbjets_survive_matched->Write();
+
+    h2_mv2_ntracks->Write();
+    h2_dl1_ntracks->Write();
 
     out_file->Write();
     out_file->Close();

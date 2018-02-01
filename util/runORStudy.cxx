@@ -31,6 +31,7 @@ void help()
     cout << "   -d          debug level (integer) (default: 0)" << endl;
     cout << "   -i          input file (ROOT file, *.txt file, or directory)" << endl;
     cout << "   --tagger    b-tagging algorithm to use (mv2 or dl1) [default: mv2]" << endl;
+    cout << "   --release   release 20 or 21 (sets which version of mv2c10 to use) [default: none]" << endl;
     cout << "   -h          print this help message" << endl;
     cout << endl;
     cout << "  Example Usage:" << endl;
@@ -49,12 +50,14 @@ int main(int argc, char** argv)
     int dbg = 0;
     string input = "";
     string tagger_name = "mv2";
+    string release = "";
 
     for(int i = 1; i < argc; i++) {
         if      (strcmp(argv[i], "-n") == 0) n_events = atoi(argv[++i]);
         else if (strcmp(argv[i], "-d") == 0) dbg = atoi(argv[++i]);
         else if (strcmp(argv[i], "-i") == 0) input = argv[++i];
         else if (strcmp(argv[i], "--tagger") == 0) tagger_name = argv[++i];
+        else if (strcmp(argv[i], "--release") == 0) release = argv[++i];
         else if (strcmp(argv[i], "-h") == 0) { help(); return 0; }
         else {
             cout << "runORStudy    Unknown command line argument '" << argv[i] << "', exiting" << endl;
@@ -70,6 +73,16 @@ int main(int argc, char** argv)
 
     if(! (tagger_name=="mv2" || tagger_name=="dl1")) {
         cout << "runORStudy    ERROR Invalid tagger name (=" << tagger_name << ") provided" << endl;
+        return 1;
+    }
+
+    if(release.empty()) {
+        cout << "runORStudy    You must specify a release (20 or 21)" << endl;
+        return 1;
+    }
+
+    if(! (release == "20" || release == "21")) {
+        cout << "runORStudy   ERROR Invalid release (=" << release << ") provided" << endl;
         return 1;
     }
 
@@ -103,6 +116,7 @@ int main(int argc, char** argv)
     analysis->setSampleName(ChainHelper::sampleName(input, dbg>0)); // SusyNtAna setSampleName (c.f. SusyNtuple/SusyNtAna.h)
     analysis->set_chain(chain); // propagate the TChain to the analysis
     analysis->set_tagger(tagger_name);
+    analysis->set_release(release);
 
     // for using the TriggerTools (c.f. SusyNtuple/TriggerTools.h) we
     // must provide the first file in our chain to initialize the
