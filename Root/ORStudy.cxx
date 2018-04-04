@@ -320,7 +320,7 @@ void ORStudy::selectTruthObjects()
 void ORStudy::look_at_photon_electron_isolation()
 {
     for(size_t iel = 0; iel < m_original_base_electrons.size(); iel++) {
-        if(iel>0) return;
+        if(iel>1) return;
         Electron* electron = m_original_base_electrons.at(iel);
         float sum_et_photon = get_photon_sum_et(electron, 0.3, false);
         float sum_et_photon_fsr = get_photon_sum_et(electron, 0.3, true);
